@@ -57,6 +57,36 @@ export interface Story {
 
 export type CustomerType = '书生' | '商贾' | '妇人' | '江湖人' | '官员' | '平民'
 
+export type RelationshipLevel = '仇敌' | '交恶' | '冷淡' | '普通' | '友善' | '挚友' | '莫逆'
+
+export interface RegularCustomer {
+  id: string
+  type: CustomerType
+  name: string
+  title: string
+  preferenceTags: string[]
+  generosity: number
+  patience: number
+  baseWealth: number
+  socialInfluence: number
+  emoji: string
+  affinity: number
+  grudge: number
+  bringAbility: number
+  visitCount: number
+  lastVisitDay: number
+  background: string
+}
+
+export interface RegularEvent {
+  id: string
+  regularId: string
+  day: number
+  type: 'affinity_up' | 'affinity_down' | 'grudge_up' | 'grudge_down' | 'support' | 'provoke'
+  amount: number
+  reason: string
+}
+
 export interface CustomerTemplate {
   type: CustomerType
   name: string
@@ -80,6 +110,8 @@ export interface Customer {
   seatId: number | null
   satisfaction: number
   emoji: string
+  isRegular?: boolean
+  regularId?: string
 }
 
 export interface InterruptionOption {
@@ -148,6 +180,10 @@ export interface GameState {
   storyScores: Record<string, number[]>
   isSettlement: boolean
   lastSettlement: SettlementResult | null
+  regularCustomers: RegularCustomer[]
+  regularEvents: RegularEvent[]
+  currentSupportMessage: string | null
+  currentProvokeMessage: string | null
 }
 
 export interface SettlementResult {
@@ -161,6 +197,8 @@ export interface SettlementResult {
   badReviewPenalty: number
   tips: number
   snackRevenue: number
+  regularSupportBonus: number
+  regularProvokePenalty: number
   totalEarnings: number
   reputationDelta: number
   avgSatisfaction: number

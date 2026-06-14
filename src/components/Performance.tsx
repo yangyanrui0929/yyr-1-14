@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Users } from 'lucide-react'
+import { Users, ThumbsUp } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import Interruption from './Interruption'
 
@@ -19,8 +19,10 @@ export default function Performance() {
     storyProgress,
     performanceActive,
     currentInterruption,
+    currentSupportMessage,
     tickPerformance,
     handleInterruption,
+    clearSupportMessage,
   } = useGameStore()
 
   useEffect(() => {
@@ -29,11 +31,20 @@ export default function Performance() {
     return () => clearInterval(timer)
   }, [performanceActive, tickPerformance])
 
+  useEffect(() => {
+    if (currentSupportMessage) {
+      const t = setTimeout(() => clearSupportMessage(), 3500)
+      return () => clearTimeout(t)
+    }
+  }, [currentSupportMessage, clearSupportMessage])
+
   const seated = customers.filter((c) => c.seatId !== null)
   const avgSat =
     seated.length > 0
       ? Math.round(seated.reduce((s, c) => s + c.satisfaction, 0) / seated.length)
       : 0
+
+  const regularCount = seated.filter((c) => c.isRegular).length
 
   if (!performanceActive && storyProgress === 0) {
     return (
@@ -52,6 +63,15 @@ export default function Performance() {
       </h2>
 
       {currentInterruption && <Interruption event={currentInterruption} onChoose={handleInterruption} />}
+
+      {currentSupportMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 animate-unroll">
+          <div className="card-ancient px-6 py-3 border-2 border-tea bg-tea/10 shadow-lg flex items-center gap-2">
+            <ThumbsUp className="w-5 h-5 text-tea" />
+            <span className="font-song text-ink">{currentSupportMessage}</span>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         <div className="text-center py-6 bg-gradient-to-b from-cinnabar/10 to-paper rounded-xl border-2 border-cinnabar/30 mb-6">
@@ -80,6 +100,11 @@ export default function Performance() {
         <div className="mb-4 flex justify-between items-center">
           <div className="text-sm text-ink-light">
             观众 <span className="font-semibold text-ink">{seated.length}</span> 人
+            {regularCount > 0 && (
+              <span className="text-gold ml-2">
+                ⭐ 含 {regularCount} 位熟客
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-ink-light">平均满意度</span>
@@ -94,10 +119,15 @@ export default function Performance() {
           {seated.map((c) => (
             <div
               key={c.id}
-              className={`card-ancient p-2 text-center transition-all ${c.satisfaction < 40 ? 'animate-shake border-cinnabar' : ''}`}
+              className={`card-ancient p-2 text-center transition-all ${c.satisfaction < 40 ? 'animate-shake border-cinnabar' : ''} ${
+                c.isRegular ? 'ring-2 ring-gold/50' : ''
+              }`}
             >
               <div className="text-2xl">{c.emoji}</div>
               <div className="text-xs font-song truncate">{c.name}</div>
+              {c.isRegular && (
+                <div className="text-[10px] text-gold font-semibold">⭐ 熟客</div>
+              )}
               <div className="text-xl my-1">{getMood(c.satisfaction)}</div>
               <div className="h-1.5 bg-paper-dark rounded-full overflow-hidden">
                 <div

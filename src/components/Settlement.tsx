@@ -91,9 +91,11 @@ export default function Settlement() {
           <Row label="座位视野加成" value={r.seatViewBonus} positive />
           <Row label="故事热度加成" value={r.storyHeatBonus} positive />
           <Row label="连载期待加成" value={r.serialExpectBonus} positive />
+          <Row label="熟客捧场加成" value={r.regularSupportBonus} positive />
           <Row label="打赏收入" value={r.tips} positive />
           <Row label="茶点售卖利润" value={r.snackRevenue} positive />
           {r.badReviewPenalty > 0 && <Row label="差评索赔" value={r.badReviewPenalty} />}
+          {r.regularProvokePenalty > 0 && <Row label="熟客挑刺损失" value={r.regularProvokePenalty} />}
         </div>
 
         <Row label="今夜合计收入" value={r.totalEarnings} positive showIcon highlight />

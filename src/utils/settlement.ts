@@ -7,6 +7,7 @@ import type {
   StoryRecord,
   SettlementResult,
   Snack,
+  RegularCustomer,
 } from '@/types'
 import { calcAvgTasteMatch } from './tasteMatch'
 import { calcAvgSeatView } from './seatView'
@@ -26,7 +27,8 @@ export function calcSettlement(
   lastStoryDay: Record<string, number>,
   storyScores: Record<string, number[]>,
   reputation: number,
-  snacks: Snack[]
+  snacks: Snack[],
+  regularCustomers?: RegularCustomer[]
 ): SettlementResult {
   const audience = customers.filter((c) => c.seatId !== null)
   const audienceCount = audience.length
@@ -49,11 +51,48 @@ export function calcSettlement(
   const storyHeatBonus = Math.round(baseEarnings * (heat.value / 100) * 0.7)
   const serialExpectBonus = Math.round(baseEarnings * (expect.value / 100) * 0.4)
 
+  let regularSupportBonus = 0
+  let regularProvokePenalty = 0
+  let regularRepBonus = 0
+
+  if (regularCustomers) {
+    for (const r of regularCustomers) {
+      const present = customers.find(
+        (c) => c.isRegular && c.regularId === r.id && c.seatId !== null
+      )
+      if (!present) continue
+      const netAffinity = r.affinity - r.grudge
+      if (netAffinity >= 60) {
+        regularSupportBonus += Math.round(present.wealth * 0.08)
+        regularRepBonus += 1
+      } else if (netAffinity >= 30) {
+        regularSupportBonus += Math.round(present.wealth * 0.04)
+        regularRepBonus += 0.5
+      }
+      if (netAffinity <= -40) {
+        regularProvokePenalty += Math.round(baseEarnings * 0.05)
+        regularRepBonus -= 2
+      } else if (netAffinity <= -20) {
+        regularProvokePenalty += Math.round(baseEarnings * 0.02)
+        regularRepBonus -= 1
+      }
+    }
+  }
+
   let tips = 0
   for (const c of audience) {
     const satFactor = c.satisfaction / 100
     const genFactor = c.generosity / 5
-    tips += Math.round(c.wealth * satFactor * genFactor * 0.15)
+    let tipAmount = Math.round(c.wealth * satFactor * genFactor * 0.15)
+    if (c.isRegular && regularCustomers) {
+      const r = regularCustomers.find((x) => x.id === c.regularId)
+      if (r) {
+        const net = r.affinity - r.grudge
+        if (net >= 40) tipAmount = Math.round(tipAmount * 1.5)
+        if (net >= 70) tipAmount = Math.round(tipAmount * 2)
+      }
+    }
+    tips += tipAmount
   }
 
   const badReviewPenalty = calcBadReviewGold(customers)
@@ -81,9 +120,11 @@ export function calcSettlement(
     seatViewBonus +
     storyHeatBonus +
     serialExpectBonus +
+    regularSupportBonus +
     tips +
     snackRevenue -
-    badReviewPenalty
+    badReviewPenalty -
+    regularProvokePenalty
 
   const avgSatisfaction =
     audience.length > 0
@@ -93,7 +134,7 @@ export function calcSettlement(
   const satisfactionDelta = Math.round((avgSatisfaction - 50) * 0.15)
   const heatDelta = Math.round((heat.value - 50) * 0.1)
   const badReviewDelta = -badReview.value
-  const reputationDelta = satisfactionDelta + heatDelta + badReviewDelta
+  const reputationDelta = satisfactionDelta + heatDelta + badReviewDelta + Math.round(regularRepBonus)
 
   return {
     day,
@@ -106,6 +147,8 @@ export function calcSettlement(
     badReviewPenalty,
     tips,
     snackRevenue,
+    regularSupportBonus,
+    regularProvokePenalty,
     totalEarnings,
     reputationDelta,
     avgSatisfaction,

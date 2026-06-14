@@ -5,6 +5,7 @@ import TeaShop from '@/components/TeaShop'
 import SeatGrid from '@/components/SeatGrid'
 import Renovation from '@/components/Renovation'
 import Ledger from '@/components/Ledger'
+import RegularNetwork from '@/components/RegularNetwork'
 import { useGameStore } from '@/store/useGameStore'
 
 export default function DayPhase() {
@@ -44,6 +45,10 @@ export default function DayPhase() {
           <button onClick={handleSwitch} className="btn-gold">
             <Moon className="w-5 h-5" /> 准备完毕，入夜开讲 →
           </button>
+        </div>
+
+        <div className="space-y-6 mb-6">
+          <RegularNetwork />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
