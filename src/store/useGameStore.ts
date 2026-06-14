@@ -188,13 +188,15 @@ export const useGameStore = create<GameState & GameActions>()(
 
             if (netAffinity >= 30) {
               const bringCount = Math.min(r.bringAbility, Math.floor(netAffinity / 25))
+              const friendNames = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛']
               for (let j = 0; j < bringCount; j++) {
-                const tpl = state.regularCustomers.find((x) => x.id === r.id)
+                const friendId = `c-friend-${r.id}-${state.day}-${j}-${Math.random().toString(36).slice(2, 6)}`
                 const sameType = generateRandomCustomers(1).map((c) => ({
                   ...c,
+                  id: friendId,
                   type: r.type,
                   preferenceTags: [...r.preferenceTags.slice(0, 3)],
-                  name: `${r.name}的朋友${['甲', '乙', '丙'][j]}`,
+                  name: `${r.name}的朋友${friendNames[j % friendNames.length]}`,
                 }))
                 allCustomers.push(...sameType)
               }
@@ -559,20 +561,54 @@ export const useGameStore = create<GameState & GameActions>()(
           }
 
           const satBonus = presentCustomer.satisfaction > 70 ? 3 : presentCustomer.satisfaction < 30 ? -3 : 0
+          const satGrudgeDelta = satBonus < 0 ? Math.abs(satBonus) : 0
 
           const newAffinity = Math.max(0, Math.min(100, r.affinity + seatAffinityBonus + satBonus))
-          const newGrudge = Math.max(0, Math.min(100, r.grudge + (satBonus < 0 ? Math.abs(satBonus) : 0)))
+          const newGrudge = Math.max(0, Math.min(100, r.grudge + satGrudgeDelta))
 
-          if (seatAffinityBonus !== 0 || satBonus !== 0) {
-            const event: RegularEvent = {
+          const events: RegularEvent[] = []
+
+          if (seatAffinityBonus > 0) {
+            events.push({
               id: uid(),
               regularId: r.id,
               day: state.day,
-              type: (seatAffinityBonus + satBonus) > 0 ? 'affinity_up' : 'affinity_down',
-              amount: Math.abs(seatAffinityBonus + satBonus),
-              reason: seatAffinityBonus > 0 ? `安排${seat?.tier}座` : satBonus > 0 ? '本次体验愉快' : satBonus < 0 ? '本次体验不佳' : '普通体验',
-            }
-            set((s) => ({ regularEvents: [...s.regularEvents, event] }))
+              type: 'affinity_up',
+              amount: seatAffinityBonus,
+              reason: `安排${seat?.tier}座，宾至如归`,
+            })
+          }
+
+          if (satBonus > 0) {
+            events.push({
+              id: uid(),
+              regularId: r.id,
+              day: state.day,
+              type: 'affinity_up',
+              amount: satBonus,
+              reason: `本次体验愉快（满意度 ${presentCustomer.satisfaction}）`,
+            })
+          } else if (satBonus < 0) {
+            events.push({
+              id: uid(),
+              regularId: r.id,
+              day: state.day,
+              type: 'affinity_down',
+              amount: Math.abs(satBonus),
+              reason: `本次体验不佳（满意度 ${presentCustomer.satisfaction}）`,
+            })
+            events.push({
+              id: uid(),
+              regularId: r.id,
+              day: state.day,
+              type: 'grudge_up',
+              amount: satGrudgeDelta,
+              reason: `体验糟糕，心生芥蒂（满意度 ${presentCustomer.satisfaction}）`,
+            })
+          }
+
+          if (events.length > 0) {
+            set((s) => ({ regularEvents: [...s.regularEvents, ...events] }))
           }
 
           return { ...r, affinity: newAffinity, grudge: newGrudge }
